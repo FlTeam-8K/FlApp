@@ -364,7 +364,7 @@ class EpisodeScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => WatchScreen(
-                                    masterUrl: episode.videoUrl720p,
+                                    embedUrl: episode.videoUrl720p,
                                     title: episode.title,
                                     episodeNumber: episode.episodeNumber,
                                     episodes: episodes
@@ -372,7 +372,7 @@ class EpisodeScreen extends StatelessWidget {
                                               'episodeNumber': e.episodeNumber,
                                               'title': e.title,
                                               'thumbnail': anime.thumbnail,
-                                              'masterUrl': e.videoUrl720p,
+                                              'embedUrl': e.videoUrl720p,
                                             })
                                         .toList(),
                                   ),
@@ -475,14 +475,15 @@ class PlaceholderScreen extends StatelessWidget {
 }
 
 
+
 class WatchScreen extends StatefulWidget {
-  final String masterUrl; // Menggunakan master.m3u8
+  final String embedUrl; // URL untuk video embed
   final String title;
   final int episodeNumber;
   final List<Map<String, dynamic>> episodes;
 
   const WatchScreen({
-    required this.masterUrl,
+    required this.embedUrl,
     required this.title,
     required this.episodeNumber,
     required this.episodes,
@@ -495,13 +496,11 @@ class WatchScreen extends StatefulWidget {
 
 class _WatchScreenState extends State<WatchScreen> {
   late InAppWebViewController _webViewController;
-  late double _webViewHeight;
 
   @override
   void initState() {
     super.initState();
     _requestStoragePermission();
-    _webViewHeight = 300; // Set initial height for the WebView
   }
 
   Future<void> _requestStoragePermission() async {
@@ -520,11 +519,11 @@ class _WatchScreenState extends State<WatchScreen> {
 
     final dio = Dio();
     final downloadDirectory = '/storage/emulated/0/Download'; // Android Download directory
-    final fileName = widget.masterUrl.split('/').last; // Menggunakan master.m3u8
+    final fileName = widget.embedUrl.split('/').last; // Menggunakan embed URL
     final filePath = '$downloadDirectory/$fileName';
 
     try {
-      await dio.download(widget.masterUrl, filePath,
+      await dio.download(widget.embedUrl, filePath,
           onReceiveProgress: (received, total) {
         if (total != -1) {
           print('Downloading: ${(received / total * 100).toStringAsFixed(0)}%');
@@ -542,12 +541,6 @@ class _WatchScreenState extends State<WatchScreen> {
     }
   }
 
-  void _toggleFullscreen() {
-    setState(() {
-      _webViewHeight = _webViewHeight == 300 ? MediaQuery.of(context).size.height : 300;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -555,37 +548,21 @@ class _WatchScreenState extends State<WatchScreen> {
       appBar: AppBar(
         backgroundColor: Colors.grey[900],
         title: Text(widget.title),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.fullscreen),
-            onPressed: _toggleFullscreen,
-          ),
-        ],
       ),
       body: Column(
         children: [
           // InAppWebView for Video Playback
-          Container(
-            height: _webViewHeight,
+          Expanded(
             child: InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(widget.masterUrl)),
+              initialUrlRequest: URLRequest(url: WebUri(widget.embedUrl)),
               onWebViewCreated: (InAppWebViewController controller) {
                 _webViewController = controller;
               },
-              // Enable fullscreen support
               onLoadStart: (InAppWebViewController controller, Uri? url) {
                 print("Loading: $url");
               },
               onLoadStop: (InAppWebViewController controller, Uri? url) async {
-                // Optional: Handle any actions after loading stops
-              },
-              onEnterFullscreen: (InAppWebViewController controller) {
-                // Handle entering fullscreen
-                print("Entered fullscreen");
-              },
-              onExitFullscreen: (InAppWebViewController controller) {
-                // Handle exiting fullscreen
-                print("Exited fullscreen");
+                print("Loaded: $url");
               },
             ),
           ),
@@ -672,7 +649,7 @@ class _WatchScreenState extends State<WatchScreen> {
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) => WatchScreen(
-                                            masterUrl: episode['masterUrl'], // Ganti dengan masterUrl
+                                            embedUrl: episode['embedUrl'], // Ganti dengan embedUrl
                                             title: episode['title'],
                                             episodeNumber: episode['episodeNumber'],
                                             episodes: widget.episodes,
