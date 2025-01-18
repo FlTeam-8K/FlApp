@@ -364,7 +364,7 @@ class EpisodeScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => WatchScreen(
-                                    embedUrl: episode.videoUrl720p,
+                                    embedUrl: episode.embedUrl,
                                     title: episode.title,
                                     episodeNumber: episode.episodeNumber,
                                     episodes: episodes
@@ -372,7 +372,7 @@ class EpisodeScreen extends StatelessWidget {
                                               'episodeNumber': e.episodeNumber,
                                               'title': e.title,
                                               'thumbnail': anime.thumbnail,
-                                              'embedUrl': e.videoUrl720p,
+                                              'embedUrl': e.embedUrl,
                                             })
                                         .toList(),
                                   ),
@@ -474,8 +474,6 @@ class PlaceholderScreen extends StatelessWidget {
   }
 }
 
-
-
 class WatchScreen extends StatefulWidget {
   final String embedUrl; // URL untuk video embed
   final String title;
@@ -518,7 +516,8 @@ class _WatchScreenState extends State<WatchScreen> {
     }
 
     final dio = Dio();
-    final downloadDirectory = '/storage/emulated/0/Download'; // Android Download directory
+    final downloadDirectory =
+        '/storage/emulated/0/Download'; // Android Download directory
     final fileName = widget.embedUrl.split('/').last; // Menggunakan embed URL
     final filePath = '$downloadDirectory/$fileName';
 
@@ -543,139 +542,142 @@ class _WatchScreenState extends State<WatchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.grey[900],
-        title: Text(widget.title),
-      ),
-      body: Column(
-        children: [
-          // InAppWebView for Video Playback
-          Expanded(
-            child: InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(widget.embedUrl)),
-              onWebViewCreated: (InAppWebViewController controller) {
-                _webViewController = controller;
-              },
-              onLoadStart: (InAppWebViewController controller, Uri? url) {
-                print("Loading: $url");
-              },
-              onLoadStop: (InAppWebViewController controller, Uri? url) async {
-                print("Loaded: $url");
-              },
-            ),
-          ),
-
-          // Episode Title
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              "Episode ${widget.episodeNumber}: ${widget.title}",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+    return DefaultTabController(
+      length: 2, // Jumlah tab
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.grey[900],
+          title: Text(widget.title),
+        ),
+        body: Column(
+          children: [
+            // InAppWebView for Video Playback with 16:9 aspect ratio
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(widget.embedUrl)),
+                onWebViewCreated: (InAppWebViewController controller) {
+                  _webViewController = controller;
+                },
+                onLoadStart: (InAppWebViewController controller, Uri? url) {
+                  print("Loading: $url");
+                },
+                onLoadStop:
+                    (InAppWebViewController controller, Uri? url) async {
+                  print("Loaded: $url");
+                },
               ),
             ),
-          ),
 
-          // Feature Buttons: Download
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Download button
-                ElevatedButton.icon(
-                  onPressed: _downloadCurrentVideo,
-                  icon: Icon(Icons.download),
-                  label: Text("Download"),
+            // Episode Title
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                "Episode ${widget.episodeNumber}: ${widget.title}",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-              ],
+              ),
             ),
-          ),
 
-          // Tab Content
-          Expanded(
-            child: Column(
-              children: [
-                // Tabs Below the Video
-                TabBar(
-                  tabs: [
-                    Tab(text: "Episodes"),
-                    Tab(text: "Comments"),
-                  ],
-                  indicatorColor: Colors.blue,
-                ),
+            // Feature Buttons: Download
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Download button
+                  ElevatedButton.icon(
+                    onPressed: _downloadCurrentVideo,
+                    icon: Icon(Icons.download),
+                    label: Text("Download"),
+                  ),
+                ],
+              ),
+            ),
 
-                // TabBarView for Episodes and Comments
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      // Episodes Tab
-                      widget.episodes.isEmpty
-                          ? Center(
-                              child: Text(
-                                "No episodes available",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: widget.episodes.length,
-                              itemBuilder: (context, index) {
-                                final episode = widget.episodes[index];
-                                return Card(
-                                  color: Colors.blueGrey[800],
-                                  margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                  child: ListTile(
-                                    leading: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                      child: Image.network(
-                                        episode['thumbnail'],
-                                        width: 50,
-                                        height: 75,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) =>
-                                            Icon(Icons.broken_image, color: Colors.white70, size: 50),
+            // TabBar
+            TabBar(
+              tabs: [
+                Tab(text: "Episodes"),
+                Tab(text: "Comments"),
+              ],
+              indicatorColor: Colors.blue,
+            ),
+
+            // TabBarView for Episodes and Comments
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // Episodes Tab
+                  widget.episodes.isEmpty
+                      ? Center(
+                          child: Text(
+                            "No episodes available",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: widget.episodes.length,
+                          itemBuilder: (context, index) {
+                            final episode = widget.episodes[index];
+                            return Card(
+                              color: Colors.blueGrey[800],
+                              margin: EdgeInsets.symmetric(
+                                  horizontal: 8.0, vertical: 4.0),
+                              child: ListTile(
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  child: Image.network(
+                                    episode['thumbnail'],
+                                    width: 50,
+                                    height: 75,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Icon(
+                                            Icons.broken_image,
+                                            color: Colors.white70,
+                                            size: 50),
+                                  ),
+                                ),
+                                title: Text(
+                                  "Episode ${episode['episodeNumber']}: ${episode['title']}",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                onTap: () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => WatchScreen(
+                                        embedUrl: episode[
+                                            'embedUrl'], // Ganti dengan embedUrl
+                                        title: episode['title'],
+                                        episodeNumber: episode['episodeNumber'],
+                                        episodes: widget.episodes,
                                       ),
                                     ),
-                                    title: Text(
-                                      "Episode ${episode['episodeNumber']}: ${episode['title']}",
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => WatchScreen(
-                                            embedUrl: episode['embedUrl'], // Ganti dengan embedUrl
-                                            title: episode['title'],
-                                            episodeNumber: episode['episodeNumber'],
-                                            episodes: widget.episodes,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-
-                      // Comments Tab
-                      Center(
-                        child: Text(
-                          "Comments feature is under development!",
-                          style: TextStyle(color: Colors.white),
+                                  );
+                                },
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    ],
+
+                  // Comments Tab
+                  Center(
+                    child: Text(
+                      "Comments feature is under development!",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
