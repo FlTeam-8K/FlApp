@@ -475,6 +475,7 @@ class PlaceholderScreen extends StatelessWidget {
   }
 }
 
+
 class WatchScreen extends StatefulWidget {
   final String embedUrl; // URL untuk video embed
   final String title;
@@ -579,7 +580,7 @@ class _WatchScreenState extends State<WatchScreen> {
                   ]);
                 },
                 onExitFullscreen: (InAppWebViewController controller) {
-                  // Mengembalikan orient asi layar ke portrait saat keluar dari fullscreen
+                  // Mengembalikan orientasi layar ke portrait saat keluar dari fullscreen
                   SystemChrome.setPreferredOrientations([
                     DeviceOrientation.portraitUp,
                     DeviceOrientation.portraitDown,
