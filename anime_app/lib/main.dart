@@ -475,7 +475,6 @@ class PlaceholderScreen extends StatelessWidget {
   }
 }
 
-
 class WatchScreen extends StatefulWidget {
   final String embedUrl; // URL untuk video embed
   final String title;
@@ -518,17 +517,18 @@ class _WatchScreenState extends State<WatchScreen> {
     }
 
     final dio = Dio();
-    final downloadDirectory = '/storage/emulated/0/Download'; // Android Download directory
+    final downloadDirectory =
+        '/storage/emulated/0/Download'; // Android Download directory
     final fileName = widget.embedUrl.split('/').last; // Menggunakan embed URL
     final filePath = '$downloadDirectory/$fileName';
 
     try {
       await dio.download(widget.embedUrl, filePath,
           onReceiveProgress: (received, total) {
-            if (total != -1) {
-              print('Downloading: ${(received / total * 100).toStringAsFixed(0)}%');
-            }
-          });
+        if (total != -1) {
+          print('Downloading: ${(received / total * 100).toStringAsFixed(0)}%');
+        }
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Downloaded to $filePath")),
@@ -547,10 +547,7 @@ class _WatchScreenState extends State<WatchScreen> {
       length: 2, // Jumlah tab
       child: Scaffold(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.grey[900],
-          title: Text(widget.title),
-        ),
+        appBar: null,
         body: Column(
           children: [
             // InAppWebView for Video Playback with 16:9 aspect ratio
@@ -560,7 +557,8 @@ class _WatchScreenState extends State<WatchScreen> {
                 initialUrlRequest: URLRequest(url: WebUri(widget.embedUrl)),
                 initialOptions: InAppWebViewGroupOptions(
                   crossPlatform: InAppWebViewOptions(
-                    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1", // User agent mobile
+                    userAgent:
+                        "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1", // User agent mobile
                   ),
                 ),
                 onWebViewCreated: (InAppWebViewController controller) {
@@ -569,7 +567,8 @@ class _WatchScreenState extends State<WatchScreen> {
                 onLoadStart: (InAppWebViewController controller, Uri? url) {
                   print("Loading: $url");
                 },
-                onLoadStop: (InAppWebViewController controller, Uri? url) async {
+                onLoadStop:
+                    (InAppWebViewController controller, Uri? url) async {
                   print("Loaded: $url");
                 },
                 onEnterFullscreen: (InAppWebViewController controller) {
@@ -634,51 +633,56 @@ class _WatchScreenState extends State<WatchScreen> {
                   // Episodes Tab
                   widget.episodes.isEmpty
                       ? Center(
-                    child: Text(
-                      "No episodes available",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  )
-                      : ListView.builder(
-                    itemCount: widget.episodes.length,
-                    itemBuilder: (context, index) {
-                      final episode = widget.episodes[index];
-                      return Card(
-                        color: Colors.blueGrey[800],
-                        margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        child: ListTile(
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: Image.network(
-                              episode['thumbnail'],
-                              width: 50,
-                              height: 75,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Icon(Icons.broken_image, color: Colors.white70, size: 50),
-                            ),
-                          ),
-                          title: Text(
-                            "Episode ${episode['episodeNumber']}: ${episode['title']}",
+                          child: Text(
+                            "No episodes available",
                             style: TextStyle(color: Colors.white),
                           ),
-                          onTap: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => WatchScreen(
-                                  embedUrl: episode['embedUrl'], // Ganti dengan embedUrl
-                                  title: episode['title'],
-                                  episodeNumber: episode['episodeNumber'],
-                                  episodes: widget.episodes,
+                        )
+                      : ListView.builder(
+                          itemCount: widget.episodes.length,
+                          itemBuilder: (context, index) {
+                            final episode = widget.episodes[index];
+                            return Card(
+                              color: Colors.blueGrey[800],
+                              margin: EdgeInsets.symmetric(
+                                  horizontal: 8.0, vertical: 4.0),
+                              child: ListTile(
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  child: Image.network(
+                                    episode['thumbnail'],
+                                    width: 50,
+                                    height: 75,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Icon(
+                                            Icons.broken_image,
+                                            color: Colors.white70,
+                                            size: 50),
+                                  ),
                                 ),
+                                title: Text(
+                                  "Episode ${episode['episodeNumber']}: ${episode['title']}",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                onTap: () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => WatchScreen(
+                                        embedUrl: episode[
+                                            'embedUrl'], // Ganti dengan embedUrl
+                                        title: episode['title'],
+                                        episodeNumber: episode['episodeNumber'],
+                                        episodes: widget.episodes,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             );
                           },
                         ),
-                      );
-                    },
-                  ),
 
                   // Comments Tab
                   Center(
