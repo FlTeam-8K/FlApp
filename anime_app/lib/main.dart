@@ -547,154 +547,156 @@ class _WatchScreenState extends State<WatchScreen> {
       length: 2, // Jumlah tab
       child: Scaffold(
         backgroundColor: Colors.black,
-        appBar: null,
-        body: Column(
-          children: [
-            // InAppWebView for Video Playback with 16:9 aspect ratio
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: InAppWebView(
-                initialUrlRequest: URLRequest(url: WebUri(widget.embedUrl)),
-                initialOptions: InAppWebViewGroupOptions(
-                  crossPlatform: InAppWebViewOptions(
-                    userAgent:
-                        "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1", // User agent mobile
-                  ),
-                ),
-                onWebViewCreated: (InAppWebViewController controller) {
-                  _webViewController = controller;
-                },
-                onLoadStart: (InAppWebViewController controller, Uri? url) {
-                  print("Loading: $url");
-                },
-                onLoadStop:
-                    (InAppWebViewController controller, Uri? url) async {
-                  print("Loaded: $url");
-                },
-                onEnterFullscreen: (InAppWebViewController controller) {
-                  // Mengatur orientasi layar ke landscape saat memasuki fullscreen
-                  SystemChrome.setPreferredOrientations([
-                    DeviceOrientation.landscapeLeft,
-                    DeviceOrientation.landscapeRight,
-                  ]);
-                },
-                onExitFullscreen: (InAppWebViewController controller) {
-                  // Mengembalikan orientasi layar ke portrait saat keluar dari fullscreen
-                  SystemChrome.setPreferredOrientations([
-                    DeviceOrientation.portraitUp,
-                    DeviceOrientation.portraitDown,
-                  ]);
-                },
-              ),
-            ),
-
-            // Episode Title
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                "Episode ${widget.episodeNumber}: ${widget.title}",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-
-            // Feature Buttons: Download
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Download button
-                  ElevatedButton.icon(
-                    onPressed: _downloadCurrentVideo,
-                    icon: Icon(Icons.download),
-                    label: Text("Download"),
-                  ),
-                ],
-              ),
-            ),
-
-            // TabBar
-            TabBar(
-              tabs: [
-                Tab(text: "Episodes"),
-                Tab(text: "Comments"),
-              ],
-              indicatorColor: Colors.blue,
-            ),
-
-            // TabBarView for Episodes and Comments
-            Expanded(
-              child: TabBarView(
-                children: [
-                  // Episodes Tab
-                  widget.episodes.isEmpty
-                      ? Center(
-                          child: Text(
-                            "No episodes available",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: widget.episodes.length,
-                          itemBuilder: (context, index) {
-                            final episode = widget.episodes[index];
-                            return Card(
-                              color: Colors.blueGrey[800],
-                              margin: EdgeInsets.symmetric(
-                                  horizontal: 8.0, vertical: 4.0),
-                              child: ListTile(
-                                leading: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8.0),
-                                  child: Image.network(
-                                    episode['thumbnail'],
-                                    width: 50,
-                                    height: 75,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) => Icon(
-                                            Icons.broken_image,
-                                            color: Colors.white70,
-                                            size: 50),
-                                  ),
-                                ),
-                                title: Text(
-                                  "Episode ${episode['episodeNumber']}: ${episode['title']}",
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                onTap: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => WatchScreen(
-                                        embedUrl: episode[
-                                            'embedUrl'], // Ganti dengan embedUrl
-                                        title: episode['title'],
-                                        episodeNumber: episode['episodeNumber'],
-                                        episodes: widget.episodes,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                        ),
-
-                  // Comments Tab
-                  Center(
-                    child: Text(
-                      "Comments feature is under development!",
-                      style: TextStyle(color: Colors.white),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // InAppWebView for Video Playback with 16:9 aspect ratio
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: InAppWebView(
+                  initialUrlRequest: URLRequest(url: WebUri(widget.embedUrl)),
+                  initialOptions: InAppWebViewGroupOptions(
+                    crossPlatform: InAppWebViewOptions(
+                      userAgent:
+                          "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1", // User agent mobile
                     ),
                   ),
-                ],
+                  onWebViewCreated: (InAppWebViewController controller) {
+                    _webViewController = controller;
+                  },
+                  onLoadStart: (InAppWebViewController controller, Uri? url) {
+                    print("Loading: $url");
+                  },
+                  onLoadStop:
+                      (InAppWebViewController controller, Uri? url) async {
+                    print("Loaded: $url");
+                  },
+                  onEnterFullscreen: (InAppWebViewController controller) {
+                    // Mengatur orientasi layar ke landscape saat memasuki fullscreen
+                    SystemChrome.setPreferredOrientations([
+                      DeviceOrientation.landscapeLeft,
+                      DeviceOrientation.landscapeRight,
+                    ]);
+                  },
+                  onExitFullscreen: (InAppWebViewController controller) {
+                    // Mengembalikan orientasi layar ke portrait saat keluar dari fullscreen
+                    SystemChrome.setPreferredOrientations([
+                      DeviceOrientation.portraitUp,
+                      DeviceOrientation.portraitDown,
+                    ]);
+                  },
+                ),
               ),
-            ),
-          ],
+
+              // Episode Title
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  "Episode ${widget.episodeNumber}: ${widget.title}",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              // Feature Buttons: Download
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Download button
+                    ElevatedButton.icon(
+                      onPressed: _downloadCurrentVideo,
+                      icon: Icon(Icons.download),
+                      label: Text("Download"),
+                    ),
+                  ],
+                ),
+              ),
+
+              // TabBar
+              TabBar(
+                tabs: [
+                  Tab(text: "Episodes"),
+                  Tab(text: "Comments"),
+                ],
+                indicatorColor: Colors.blue,
+              ),
+
+              // TabBarView for Episodes and Comments
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // Episodes Tab
+                    widget.episodes.isEmpty
+                        ? Center(
+                            child: Text(
+                              "No episodes available",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: widget.episodes.length,
+                            itemBuilder: (context, index) {
+                              final episode = widget.episodes[index];
+                              return Card(
+                                color: Colors.blueGrey[800],
+                                margin: EdgeInsets.symmetric(
+                                    horizontal: 8.0, vertical: 4.0),
+                                child: ListTile(
+                                  leading: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    child: Image.network(
+                                      episode['thumbnail'],
+                                      width: 50,
+                                      height: 75,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) => Icon(
+                                              Icons.broken_image,
+                                              color: Colors.white70,
+                                              size: 50),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    "Episode ${episode['episodeNumber']}: ${episode['title']}",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => WatchScreen(
+                                          embedUrl: episode[
+                                              'embedUrl'], // Ganti dengan embedUrl
+                                          title: episode['title'],
+                                          episodeNumber:
+                                              episode['episodeNumber'],
+                                          episodes: widget.episodes,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+
+                    // Comments Tab
+                    Center(
+                      child: Text(
+                        "Comments feature is under development!",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
