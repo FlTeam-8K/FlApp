@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Anime Streaming App',
+      title: 'Fansub Loader Anime',
       theme: ThemeData.dark().copyWith(
         primaryColor: Colors.blueGrey[900],
         scaffoldBackgroundColor: Colors.black,
