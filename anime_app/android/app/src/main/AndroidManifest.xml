@@ -5,7 +5,7 @@
 
  <!-- Add this line for internet access -->
 <application
-        android:label="anime_app"
+        android:label="Flanime"
         android:name="${applicationName}"
         android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher">
