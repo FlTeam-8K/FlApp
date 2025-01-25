@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'api/api_service.dart';
 import 'models/anime_model.dart';
 import 'models/episode_model.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:http/http.dart' as http;
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -365,7 +366,11 @@ class EpisodeScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => WatchScreen(
-                                    embedUrl: episode.embedUrl,
+                                    url144p: episode.url144p,
+                                    url240p: episode.url240p,
+                                    url360p: episode.url360p,
+                                    url480p: episode.url480p,
+                                    url720p: episode.url720p,
                                     title: episode.title,
                                     episodeNumber: episode.episodeNumber,
                                     episodes: episodes
@@ -373,7 +378,11 @@ class EpisodeScreen extends StatelessWidget {
                                               'episodeNumber': e.episodeNumber,
                                               'title': e.title,
                                               'thumbnail': anime.thumbnail,
-                                              'embedUrl': e.embedUrl,
+                                              'url144p': e.url144p,
+                                              'url240p': e.url240p,
+                                              'url360p': e.url360p,
+                                              'url480p': e.url480p,
+                                              'url720p': e.url720p,
                                             })
                                         .toList(),
                                   ),
@@ -476,13 +485,21 @@ class PlaceholderScreen extends StatelessWidget {
 }
 
 class WatchScreen extends StatefulWidget {
-  final String embedUrl; // URL untuk video embed
+  final String url144p;
+  final String url240p;
+  final String url360p;
+  final String url480p;
+  final String url720p;
   final String title;
   final int episodeNumber;
   final List<Map<String, dynamic>> episodes;
 
   const WatchScreen({
-    required this.embedUrl,
+    required this.url144p,
+    required this.url240p,
+    required this.url360p,
+    required this.url480p,
+    required this.url720p,
     required this.title,
     required this.episodeNumber,
     required this.episodes,
@@ -494,51 +511,49 @@ class WatchScreen extends StatefulWidget {
 }
 
 class _WatchScreenState extends State<WatchScreen> {
-  late InAppWebViewController _webViewController;
+  late VideoPlayerController _videoPlayerController;
+  late ChewieController _chewieController;
+
+  List<String> _qualities = [];
+  String? _selectedQuality;
 
   @override
   void initState() {
     super.initState();
-    _requestStoragePermission();
+    _qualities = [
+      widget.url144p,
+      widget.url240p,
+      widget.url360p,
+      widget.url480p,
+      widget.url720p,
+    ];
+    _selectedQuality = _qualities.first; // Set kualitas default
+    _initializePlayer(
+        _selectedQuality!); // Inisialisasi player dengan kualitas pertama
   }
 
-  Future<void> _requestStoragePermission() async {
-    if (await Permission.storage.request().isGranted) {
-      print("Storage permission granted");
-    } else {
-      print("Storage permission denied");
-    }
+  void _initializePlayer(String url) {
+    _videoPlayerController = VideoPlayerController.network(url);
+    _chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController,
+      autoPlay: true,
+      looping: true,
+    );
   }
 
-  Future<void> _downloadCurrentVideo() async {
-    if (!await Permission.storage.isGranted) {
-      print("Storage permission is not granted");
-      return;
-    }
+  void _changeQuality(String qualityUrl) {
+    _chewieController.dispose(); // Dispose the current controller
+    _initializePlayer(qualityUrl); // Initialize with the new quality
+    setState(() {
+      _selectedQuality = qualityUrl; // Update selected quality
+    });
+  }
 
-    final dio = Dio();
-    final downloadDirectory =
-        '/storage/emulated/0/Download'; // Android Download directory
-    final fileName = widget.embedUrl.split('/').last; // Menggunakan embed URL
-    final filePath = '$downloadDirectory/$fileName';
-
-    try {
-      await dio.download(widget.embedUrl, filePath,
-          onReceiveProgress: (received, total) {
-        if (total != -1) {
-          print('Downloading: ${(received / total * 100).toStringAsFixed(0)}%');
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Downloaded to $filePath")),
-      );
-    } catch (e) {
-      print("Download failed: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Download failed: $e")),
-      );
-    }
+  @override
+  void dispose() {
+    _videoPlayerController.dispose();
+    _chewieController.dispose();
+    super.dispose();
   }
 
   @override
@@ -550,41 +565,10 @@ class _WatchScreenState extends State<WatchScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              // InAppWebView for Video Playback with 16:9 aspect ratio
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: InAppWebView(
-                  initialUrlRequest: URLRequest(url: WebUri(widget.embedUrl)),
-                  initialOptions: InAppWebViewGroupOptions(
-                    crossPlatform: InAppWebViewOptions(
-                      userAgent:
-                          "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1", // User agent mobile
-                    ),
-                  ),
-                  onWebViewCreated: (InAppWebViewController controller) {
-                    _webViewController = controller;
-                  },
-                  onLoadStart: (InAppWebViewController controller, Uri? url) {
-                    print("Loading: $url");
-                  },
-                  onLoadStop:
-                      (InAppWebViewController controller, Uri? url) async {
-                    print("Loaded: $url");
-                  },
-                  onEnterFullscreen: (InAppWebViewController controller) {
-                    // Mengatur orientasi layar ke landscape saat memasuki fullscreen
-                    SystemChrome.setPreferredOrientations([
-                      DeviceOrientation.landscapeLeft,
-                      DeviceOrientation.landscapeRight,
-                    ]);
-                  },
-                  onExitFullscreen: (InAppWebViewController controller) {
-                    // Mengembalikan orientasi layar ke portrait saat keluar dari fullscreen
-                    SystemChrome.setPreferredOrientations([
-                      DeviceOrientation.portraitUp,
-                      DeviceOrientation.portraitDown,
-                    ]);
-                  },
+              // Chewie for Video Playback with 16:9 aspect ratio
+              Expanded(
+                child: Chewie(
+                  controller: _chewieController,
                 ),
               ),
 
@@ -601,20 +585,35 @@ class _WatchScreenState extends State<WatchScreen> {
                 ),
               ),
 
-              // Feature Buttons: Download
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Download button
-                    ElevatedButton.icon(
-                      onPressed: _downloadCurrentVideo,
-                      icon: Icon(Icons.download),
-                      label: Text("Download"),
-                    ),
-                  ],
-                ),
+              // Feature Buttons: Quality Selection and Download
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Dropdown untuk memilih kualitas
+                  DropdownButton<String>(
+                    value: _selectedQuality,
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        _changeQuality(newValue);
+                      }
+                    },
+                    items: _qualities
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(
+                            value.split('/').last), // Menampilkan nama kualitas
+                      );
+                    }).toList(),
+                  ),
+
+                  // Tombol Download
+                  //ElevatedButton.icon(
+                  // onPressed: _downloadCurrentVideo,
+                  // icon: Icon(Icons.download),
+                  // label: Text("Download"),
+                  //),
+                ],
               ),
 
               // TabBar
@@ -670,8 +669,11 @@ class _WatchScreenState extends State<WatchScreen> {
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => WatchScreen(
-                                          embedUrl: episode[
-                                              'embedUrl'], // Ganti dengan embedUrl
+                                          url144p: episode['url144p'],
+                                          url240p: episode['url240p'],
+                                          url360p: episode['url360p'],
+                                          url480p: episode['url480p'],
+                                          url720p: episode['url720p'],
                                           title: episode['title'],
                                           episodeNumber:
                                               episode['episodeNumber'],
