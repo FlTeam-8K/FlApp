@@ -1,4 +1,4 @@
-package com.example.anime_app
+package com.fansubloader.flanime
 
 import io.flutter.embedding.android.FlutterActivity
 
