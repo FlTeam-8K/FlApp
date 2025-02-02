@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'api/api_service.dart';
 import 'models/anime_model.dart';
 import 'models/episode_model.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter/services.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -366,8 +363,6 @@ class EpisodeScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => WatchScreen(
-                                    videoUrl144p: episode.url144p,
-                                    videoUrl240p: episode.url240p,
                                     videoUrl360p: episode.url360p,
                                     videoUrl480p: episode.url480p,
                                     videoUrl720p: episode.url720p,
@@ -485,8 +480,6 @@ class PlaceholderScreen extends StatelessWidget {
 }
 
 class WatchScreen extends StatefulWidget {
-  final String videoUrl144p;
-  final String videoUrl240p;
   final String videoUrl360p;
   final String videoUrl480p;
   final String videoUrl720p;
@@ -495,8 +488,6 @@ class WatchScreen extends StatefulWidget {
   final List<Map<String, dynamic>> episodes;
 
   const WatchScreen({
-    required this.videoUrl144p,
-    required this.videoUrl240p,
     required this.videoUrl360p,
     required this.videoUrl480p,
     required this.videoUrl720p,
@@ -510,96 +501,143 @@ class WatchScreen extends StatefulWidget {
   State<WatchScreen> createState() => _WatchScreenState();
 }
 
-class _WatchScreenState extends State<WatchScreen>
-    with SingleTickerProviderStateMixin {
+class _WatchScreenState extends State<WatchScreen> {
   late String currentVideoUrl;
-  VideoPlayerController? _videoPlayerController;
-  ChewieController? _chewieController;
-  late TabController _tabController;
+  late InAppWebViewController _webViewController;
 
   @override
   void initState() {
     super.initState();
-    _requestStoragePermission();
     currentVideoUrl = widget.videoUrl720p; // Default resolution
-    _tabController = TabController(length: 2, vsync: this);
-    _initializePlayer();
-  }
-
-  Future<void> _requestStoragePermission() async {
-    if (await Permission.storage.request().isGranted) {
-      print("Storage permission granted");
-    } else {
-      print("Storage permission denied");
-    }
-  }
-
-  Future<void> _initializePlayer() async {
-    final position = _videoPlayerController?.value.position ?? Duration.zero;
-
-    _videoPlayerController?.dispose();
-    _videoPlayerController = VideoPlayerController.network(currentVideoUrl)
-      ..initialize().then((_) {
-        _videoPlayerController?.seekTo(position);
-        _videoPlayerController?.play();
-        setState(() {});
-      });
-
-    _chewieController?.dispose();
-    _chewieController = ChewieController(
-      videoPlayerController: _videoPlayerController!,
-      autoPlay: true,
-      looping: false,
-      allowFullScreen: true,
-      aspectRatio: 16 / 9,
-    );
-    setState(() {});
   }
 
   void _changeResolution(String newUrl) {
     setState(() {
       currentVideoUrl = newUrl;
-      _initializePlayer();
+      _webViewController.loadUrl(urlRequest: URLRequest(url: WebUri(newUrl)));
     });
   }
 
-  Future<void> _downloadCurrentVideo() async {
-    if (!await Permission.storage.isGranted) {
-      print("Storage permission is not granted");
-      return;
-    }
-
-    final dio = Dio();
-    final downloadDirectory =
-        '/storage/emulated/0/Download'; // Android Download directory
-    final fileName = currentVideoUrl.split('/').last;
-    final filePath = '$downloadDirectory/$fileName';
-
-    try {
-      await dio.download(currentVideoUrl, filePath,
-          onReceiveProgress: (received, total) {
-        if (total != -1) {
-          print('Downloading: ${(received / total * 100).toStringAsFixed(0)}%');
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Downloaded to $filePath")),
-      );
-    } catch (e) {
-      print("Download failed: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Download failed: $e")),
-      );
-    }
-  }
-
   @override
-  void dispose() {
-    _videoPlayerController?.dispose();
-    _chewieController?.dispose();
-    _tabController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.grey[900],
+        title: Text(widget.title),
+      ),
+      body: Column(
+        children: [
+          // Video Player (WebView)
+          Container(
+            height: MediaQuery.of(context).size.width * 9 / 16,
+            child: InAppWebView(
+              initialUrlRequest: URLRequest(url: WebUri(currentVideoUrl)),
+              initialSettings: InAppWebViewSettings(
+                javaScriptEnabled: true,
+                allowsInlineMediaPlayback: true,
+                preferredContentMode: UserPreferredContentMode.MOBILE,
+                javaScriptCanOpenWindowsAutomatically: false, // Disable popups
+              ),
+              onWebViewCreated: (controller) {
+                _webViewController = controller;
+              },
+              onLoadStop: (controller, url) async {
+                await controller.evaluateJavascript(source: """
+                  var dnsConfig = {
+                    addresses: ['94.140.14.14', '94.140.15.15', '2a10:50c0::ad1:ff', '2a10:50c0::ad2:ff']
+                  };
+                  navigator.connection = navigator.connection || {};
+                  navigator.connection.dnsConfig = dnsConfig;
+                """);
+                // Block popups
+                await controller.evaluateJavascript(source: """
+                  window.open = function() { return null; };
+                  document.addEventListener('click', function(event) {
+                    if (event.target.tagName === 'A' && event.target.target === '_blank') {
+                      event.preventDefault();
+                    }
+                  });
+                """);
+              },
+            ),
+          ),
+
+          // Episode Title
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              "Episode ${widget.episodeNumber}: ${widget.title}",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+
+          // Feature Buttons: Change Resolution
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Change Resolution button
+                ElevatedButton.icon(
+                  onPressed: () => _showResolutionDialog(),
+                  icon: Icon(Icons.video_settings),
+                  label: Text("Resolution"),
+                ),
+              ],
+            ),
+          ),
+
+          // Episode List
+          Expanded(
+            child: ListView.builder(
+              itemCount: widget.episodes.length,
+              itemBuilder: (context, index) {
+                final episode = widget.episodes[index];
+                return Card(
+                  color: Colors.blueGrey[800],
+                  margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                  child: ListTile(
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.0),
+                      child: Image.network(
+                        episode['thumbnail'],
+                        width: 50,
+                        height: 75,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    title: Text(
+                      "Episode ${episode['episodeNumber']}: ${episode['title']}",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WatchScreen(
+                            videoUrl360p: episode['videoUrl360p'],
+                            videoUrl480p: episode['videoUrl480p'],
+                            videoUrl720p: episode['videoUrl720p'],
+                            title: episode['title'],
+                            episodeNumber: episode['episodeNumber'],
+                            episodes: widget.episodes,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showResolutionDialog() {
@@ -628,161 +666,6 @@ class _WatchScreenState extends State<WatchScreen>
               Navigator.pop(context);
             },
             child: Text("720p"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.grey[900],
-        title: Text(widget.title),
-      ),
-      body: Column(
-        children: [
-          // Video Player
-          Container(
-            height: MediaQuery.of(context).size.width * 9 / 16,
-            child: _chewieController != null &&
-                    _videoPlayerController!.value.isInitialized
-                ? Chewie(controller: _chewieController!)
-                : Center(child: CircularProgressIndicator()),
-          ),
-
-          // Episode Title
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              "Episode ${widget.episodeNumber}: ${widget.title}",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-
-          // Feature Buttons: Download, Change Resolution
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Download button
-                ElevatedButton.icon(
-                  onPressed: _downloadCurrentVideo,
-                  icon: Icon(Icons.download),
-                  label: Text("Download"),
-                ),
-
-                // Change Resolution button
-                ElevatedButton.icon(
-                  onPressed: _showResolutionDialog,
-                  icon: Icon(Icons.video_settings),
-                  label: Text("Resolution"),
-                ),
-              ],
-            ),
-          ),
-
-          // Tab Content
-          Expanded(
-            child: Column(
-              children: [
-                // Tabs Below the Video
-                TabBar(
-                  controller: _tabController,
-                  tabs: [
-                    Tab(text: "Episodes"),
-                    Tab(text: "Comments"),
-                  ],
-                  indicatorColor: Colors.blue,
-                ),
-
-                // TabBarView for Episodes and Comments
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      // Episodes Tab
-                      widget.episodes.isEmpty
-                          ? Center(
-                              child: Text(
-                                "No episodes available",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: widget.episodes.length,
-                              itemBuilder: (context, index) {
-                                final episode = widget.episodes[index];
-                                return Card(
-                                  color: Colors.blueGrey[800],
-                                  margin: EdgeInsets.symmetric(
-                                      horizontal: 8.0, vertical: 4.0),
-                                  child: ListTile(
-                                    leading: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                      child: Image.network(
-                                        episode['thumbnail'],
-                                        width: 50,
-                                        height: 75,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                                Icon(Icons.broken_image,
-                                                    color: Colors.white70,
-                                                    size: 50),
-                                      ),
-                                    ),
-                                    title: Text(
-                                      "Episode ${episode['episodeNumber']}: ${episode['title']}",
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => WatchScreen(
-                                            videoUrl144p:
-                                                episode['videoUrl144p'],
-                                            videoUrl240p:
-                                                episode['videoUrl240p'],
-                                            videoUrl360p:
-                                                episode['videoUrl360p'],
-                                            videoUrl480p:
-                                                episode['videoUrl480p'],
-                                            videoUrl720p:
-                                                episode['videoUrl720p'],
-                                            title: episode['title'],
-                                            episodeNumber:
-                                                episode['episodeNumber'],
-                                            episodes: widget.episodes,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-
-                      // Comments Tab
-                      Center(
-                        child: Text(
-                          "Comments feature is under development!",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
